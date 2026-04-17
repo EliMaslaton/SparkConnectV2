@@ -2,7 +2,12 @@ import { useNotificationStore } from '@/store/notificationStore';
 import { Resend } from 'resend';
 
 // Inicializar Resend con la API key desde variables de entorno
-const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
+let resend: Resend | null = null;
+if (import.meta.env.VITE_RESEND_API_KEY) {
+  resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
+} else {
+  console.warn('⚠️ VITE_RESEND_API_KEY not found in environment variables. Email notifications will be disabled.');
+}
 
 export interface NotificationOptions {
   title: string;
@@ -68,6 +73,11 @@ export class NotificationManager {
     subject: string,
     htmlContent: string
   ) {
+    if (!resend) {
+      console.warn('⚠️ Resend API key not configured. Email notification skipped.');
+      return false;
+    }
+
     try {
       const response = await resend.emails.send({
         from: 'Spark Connect <noreply@sparkconnect.com>',
