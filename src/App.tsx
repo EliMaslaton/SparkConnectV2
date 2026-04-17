@@ -59,6 +59,7 @@ const AppContent = () => {
           <ProtectedRoute>
             <Explorer />
           </ProtectedRoute>
+          
         }
       />
       <Route
