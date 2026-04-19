@@ -165,7 +165,7 @@ export const useAuthStore = create<AuthStore>()(
               error: null,
             });
           } catch (error) {
-            console.error("Error in Google login:", error);
+            console.error("❌ Error in Google login:", error);
             set({
               isLoading: false,
               error: "Error durante el login con Google",

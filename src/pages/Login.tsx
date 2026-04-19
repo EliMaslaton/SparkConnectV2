@@ -34,19 +34,19 @@ const Login = () => {
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (response) => {
       try {
-        // response.access_token está disponible en implicit flow
+        // Con implicit flow, obtenemos el access_token
         const accessToken = response.access_token;
         
-        // Obtener datos del usuario
-        const userInfo = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
+        // Obtener información del usuario
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         
-        if (!userInfo.ok) {
+        if (!userInfoResponse.ok) {
           throw new Error('Error al obtener información de Google');
         }
         
-        const data = await userInfo.json();
+        const data = await userInfoResponse.json();
         
         loginWithGoogle({
           name: data.name,
@@ -54,7 +54,7 @@ const Login = () => {
           avatar: data.picture,
         });
       } catch (error) {
-        console.error('Error en Google Login:', error);
+        console.error('❌ Error en Google Login:', error);
       }
     },
     onError: (error) => {
