@@ -74,7 +74,7 @@ const Explorer = () => {
           rating: getAverageRating(service.userId),
           reviews: 0,
           location: serviceAuthor?.location || "Online",
-          bio: serviceAuthor?.bio || "Servicio publicado en SparkConnect",
+          bio: serviceAuthor?.bio || "Servicio publicado en MaslaConnect",
           projects: [],
           services: [service],
           _isService: true,

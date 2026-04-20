@@ -1,4 +1,4 @@
-# ⚡ Instalación Rápida de Supabase para SparkConnect
+# ⚡ Instalación Rápida de Supabase para MaslaConnect
 
 ## 📦 Paso 1: Instalar Dependencias (Ya Hecho)
 
@@ -19,7 +19,7 @@ npm install @supabase/supabase-js
 
 ### 2.2 Crear Proyecto
 1. Click en "New Project"
-2. **Nombre:** `spark-connect`
+2. **Nombre:** `maslaconnect`
 3. **Contraseña:** Alguna segura (la guardaremos)
 4. **Región:** Elige la más cercana a ti
 5. Click en "Create new project"

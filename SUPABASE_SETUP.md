@@ -5,7 +5,7 @@
 1. Ve a [https://supabase.com](https://supabase.com)
 2. Click en "Start your project" 
 3. Crea una cuenta con GitHub/Google o email
-4. Crea un nuevo proyecto (nombre: `spark-connect`)
+4. Crea un nuevo proyecto (nombre: `maslaconnect`)
 5. Espera ~2 minutos mientras se inicializa
 
 ---

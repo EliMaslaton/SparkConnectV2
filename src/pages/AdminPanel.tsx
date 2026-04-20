@@ -18,10 +18,28 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 const AdminPanel = () => {
-  const { isAdmin, loadUsersFromSupabase, promoteToAdmin, demoteFromAdmin, deleteUser } = useAuthStore();
+  const { isAdmin, isOwner, loadUsersFromSupabase, promoteToAdmin, demoteFromAdmin, deleteUser, error, setError } = useAuthStore();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [notification, setNotification] = useState<string | null>(null);
+
+  // Verificar si es admin
+  if (!isAdmin()) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Mostrar notificación si hay error
+  useEffect(() => {
+    if (error) {
+      setNotification(error);
+      const timer = setTimeout(() => {
+        setNotification(null);
+        setError(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, setError]);
 
   // Verificar si es admin
   if (!isAdmin()) {
@@ -87,6 +105,13 @@ const AdminPanel = () => {
             </p>
           </div>
 
+          {/* Notification */}
+          {notification && (
+            <Alert variant="destructive">
+              <AlertDescription>{notification}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-card text-card-foreground rounded-xl p-6 border">
@@ -148,12 +173,19 @@ const AdminPanel = () => {
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={user.role === "admin" ? "default" : "secondary"}
-                          className="rounded-full"
-                        >
-                          {user.role === "admin" ? "🔐 Admin" : user.role === "freelancer" ? "👨‍💼 Freelancer" : "👤 Cliente"}
-                        </Badge>
+                        <div className="flex gap-2">
+                          <Badge
+                            variant={user.role === "admin" ? "default" : "secondary"}
+                            className="rounded-full"
+                          >
+                            {isOwner(user.email) ? "👑 Propietario" : user.role === "admin" ? "🔐 Admin" : user.role === "freelancer" ? "👨‍💼 Freelancer" : "👤 Cliente"}
+                          </Badge>
+                          {isOwner(user.email) && (
+                            <Badge variant="default" className="rounded-full bg-amber-600">
+                              🔒 Protegido
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right space-x-2">
@@ -172,6 +204,8 @@ const AdminPanel = () => {
                             size="sm"
                             variant="outline"
                             className="rounded-lg text-xs"
+                            disabled={isOwner(user.email)}
+                            title={isOwner(user.email) ? "No se puede remover privilegios al propietario" : ""}
                           >
                             Remover Admin
                           </Button>
@@ -181,6 +215,8 @@ const AdminPanel = () => {
                           size="sm"
                           variant="destructive"
                           className="rounded-lg text-xs"
+                          disabled={isOwner(user.email)}
+                          title={isOwner(user.email) ? "No se puede eliminar al propietario" : ""}
                         >
                           Eliminar
                         </Button>

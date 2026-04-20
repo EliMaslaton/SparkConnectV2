@@ -105,7 +105,7 @@ const Register = () => {
             >
               <div className="text-center space-y-2">
                 <h1 className="text-3xl font-display font-bold text-foreground">
-                  Únete a Spark Connect
+                  Únete a MaslaConnect
                 </h1>
                 <p className="text-muted-foreground">
                   ¿Cómo quieres usar la plataforma?

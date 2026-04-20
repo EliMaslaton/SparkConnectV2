@@ -1,4 +1,4 @@
-# Integración de Backend para SparkConnect
+# Integración de Backend para MaslaConnect
 
 ## 📋 Estado Actual
 

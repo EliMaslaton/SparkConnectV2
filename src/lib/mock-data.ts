@@ -35,7 +35,7 @@ export const TALENTS: Talent[] = [
     name: "Valentina Reyes",
     avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Valentina&backgroundColor=ffd5dc",
     tagline: "Diseñadora UI que ama el minimalismo",
-    email: "valentina@sparkconnect.local",
+    email: "valentina@maslaconnect.local",
     skills: ["Diseño UI/UX", "Figma", "Branding"],
     projectImage: sampleProject1,
     rate: "$15/hr",

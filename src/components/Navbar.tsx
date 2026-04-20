@@ -42,7 +42,7 @@ export const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container flex items-center justify-between h-16">
         <Link to="/" className="font-display font-bold text-xl text-foreground">
-          Spark<span className="text-primary">Connect</span>
+          Masla<span className="text-primary">Connect</span>
         </Link>
 
         {isAuthenticated && user ? (

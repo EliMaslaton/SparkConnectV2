@@ -1,5 +1,5 @@
 /**
- * @file Core TypeScript types and interfaces for SparkConnect
+ * @file Core TypeScript types and interfaces for MaslaConnect
  * @description All data models, enums, and interfaces used throughout the application
  * 
  * Main entities:

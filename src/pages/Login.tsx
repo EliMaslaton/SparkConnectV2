@@ -96,7 +96,7 @@ const Login = () => {
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Demo: valentina.reyes@sparkconnect.com
+                Demo: valentina.reyes@maslaconnect.com
               </p>
             </div>
             <div>

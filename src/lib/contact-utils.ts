@@ -29,5 +29,5 @@ export const generateContactMessage = (
   if (serviceName) {
     return `Hola ${talentName}, me interesa tu servicio "${serviceName}". ¿Podemos conversar al respecto?`;
   }
-  return `Hola ${talentName}, vi tu perfil en Spark Connect y me gustaría trabajar contigo. ¿Podemos conversar?`;
+  return `Hola ${talentName}, vi tu perfil en MaslaConnect y me gustaría trabajar contigo. ¿Podemos conversar?`;
 };

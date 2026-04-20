@@ -9,7 +9,7 @@ Para que el login con Google funcione, necesitas obtener un **Google Client ID**
 ### 1. Crear un Proyecto en Google Cloud Console
 
 1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
-2. Crea un nuevo proyecto (ej: "Spark Connect")
+2. Crea un nuevo proyecto (ej: "MaslaConnect")
 3. Espera a que se cree el proyecto
 
 ### 2. Habilitar Google+ API
@@ -27,9 +27,9 @@ Para que el login con Google funcione, necesitas obtener un **Google Client ID**
    - Rellena los datos requeridos
 4. Selecciona **Aplicación web** como tipo de aplicación
 5. En **URIs de origen autorizados**, agrega:
-   - `http://localhost:5173` (para desarrollo local)
+   - `http://localhost:8080` (para desarrollo local)
 6. En **URIs de redirección autorizados**, agrega:
-   - `http://localhost:5173` (para desarrollo local)
+   - `http://localhost:8080` (para desarrollo local)
 7. Haz clic en **Crear**
 
 ### 4. Copiar tu Client ID
@@ -54,7 +54,7 @@ Para que el login con Google funcione, necesitas obtener un **Google Client ID**
 ### Errores Comunes
 
 - **"Aplicación no verificada"**: Es normal en desarrollo. Haz clic en "Continuar" o "Advanced" y luego "Ir a localhost"
-- **CORS Error**: Asegúrate de que `http://localhost:5173` está en los orígenes autorizados
+- **CORS Error**: Asegúrate de que `http://localhost:8080` está en los orígenes autorizados
 - **Cliente no configurado**: Verifica que la variable `VITE_GOOGLE_CLIENT_ID` está correctamente configurada en `.env.local`
 
 ## Variables de Entorno

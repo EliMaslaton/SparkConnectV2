@@ -4,13 +4,16 @@ import { AuthState, UserProfile } from "@/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+// Owner de la plataforma - protegido de demotions
+const OWNER_EMAIL = "elielmaslaton@gmail.com";
+
 /**
  * Convert mock data (TALENTS) to UserProfile objects for authentication
  * This is used for demo purposes with password "test123"
  */
 const mockUsers: UserProfile[] = TALENTS.map((talent) => ({
   id: talent.id,
-  email: `${talent.name.toLowerCase().replace(" ", ".")}@sparkconnect.com`,
+  email: `${talent.name.toLowerCase().replace(" ", ".")}@maslaconnect.com`,
   password: "test123", // Solo para demo
   name: talent.name,
   role: "freelancer" as const,
@@ -51,6 +54,8 @@ interface AuthStore extends AuthState {
   deleteUser: (userId: string) => void;
   /** Check if current user has admin privileges */
   isAdmin: () => boolean;
+  /** Check if a user email is the platform owner */
+  isOwner: (email: string) => boolean;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -97,9 +102,9 @@ export const useAuthStore = create<AuthStore>()(
             const allUsers = [...mockUsers, ...get().registeredUsers];
             let user = allUsers.find((u) => u.email === googleData.email);
             
-            // Solo elielmaslaton@gmail.com es admin
+            // Solo elielmaslaton@gmail.com es admin por defecto
             const isAdmin = googleData.email === "elielmaslaton@gmail.com";
-            const role = isAdmin ? "admin" : "freelancer";
+            const defaultRole = isAdmin ? "admin" : "freelancer";
             
             // Si el usuario no existe, crear uno nuevo
             if (!user) {
@@ -107,10 +112,10 @@ export const useAuthStore = create<AuthStore>()(
                 id: `user_${Date.now()}`,
                 email: googleData.email,
                 name: googleData.name,
-                role: role as const,
+                role: defaultRole as const,
                 avatar: googleData.avatar,
-                tagline: isAdmin ? "Administrador" : "Nuevo miembro de Spark Connect",
-                bio: isAdmin ? "Gestor principal de la plataforma" : "Bienvenido a Spark Connect",
+                tagline: isAdmin ? "Administrador" : "Nuevo miembro de MaslaConnect",
+                bio: isAdmin ? "Gestor principal de la plataforma" : "Bienvenido a MaslaConnect",
                 location: "Por definir",
                 skills: isAdmin ? ["administración", "gestión de usuarios"] : [],
                 createdAt: new Date(),
@@ -136,21 +141,26 @@ export const useAuthStore = create<AuthStore>()(
                 registeredUsers: [...state.registeredUsers, user as UserProfile],
               }));
             } else {
-              // Si el usuario ya existe, actualizar su rol basado en el email
+              // Si el usuario ya existe, MANTENER su rol actual (ya fue decidido en AdminPanel)
+              // Solo actualizar nombre y avatar si cambiaron
               user = {
                 ...user,
-                role: role as const,
+                name: googleData.name,
+                avatar: googleData.avatar || user.avatar,
               };
               
-              // Actualizar en Supabase
+              // Actualizar solo nombre y avatar en Supabase (NO el rol)
               await supabase
                 .from("users")
-                .update({ role: user.role })
+                .update({ 
+                  name: user.name,
+                  avatar: user.avatar 
+                })
                 .eq("email", googleData.email);
               
               set((state) => {
                 const updatedRegisteredUsers = state.registeredUsers.map((u) =>
-                  u.email === googleData.email ? { ...u, role: role as const } : u
+                  u.email === googleData.email ? { ...u, name: user.name, avatar: user.avatar } : u
                 );
                 return {
                   registeredUsers: updatedRegisteredUsers,
@@ -274,11 +284,61 @@ export const useAuthStore = create<AuthStore>()(
       promoteToAdmin: (userId: string) => {
         (async () => {
           try {
-            // Actualizar en Supabase
-            await supabase
+            const state = get();
+            // Buscar en registeredUsers Y en mockUsers
+            let userToPromote = state.registeredUsers.find((u) => u.id === userId);
+            if (!userToPromote) {
+              userToPromote = mockUsers.find((u) => u.id === userId);
+            }
+            
+            if (!userToPromote) {
+              set({
+                error: "Usuario no encontrado",
+              });
+              return;
+            }
+            
+            // Primero, verificar si el usuario existe en Supabase
+            const { data: existingUser, error: selectError } = await supabase
               .from("users")
-              .update({ role: "admin" })
-              .eq("id", userId);
+              .select("*")
+              .eq("id", userId)
+              .maybeSingle();
+            
+            if (selectError) {
+              throw selectError;
+            }
+            
+            // Si no existe, insertarlo primero
+            if (!existingUser) {
+              const { error: insertError } = await supabase
+                .from("users")
+                .insert({
+                  id: userToPromote.id,
+                  email: userToPromote.email,
+                  name: userToPromote.name,
+                  role: "admin", // Insertar directamente como admin
+                  avatar: userToPromote.avatar,
+                  tagline: userToPromote.tagline,
+                  bio: userToPromote.bio,
+                  location: userToPromote.location,
+                  skills: userToPromote.skills || [],
+                });
+              
+              if (insertError) {
+                throw insertError;
+              }
+            } else {
+              // Si existe, actualizar el role
+              const { error: updateError } = await supabase
+                .from("users")
+                .update({ role: "admin" })
+                .eq("id", userId);
+              
+              if (updateError) {
+                throw updateError;
+              }
+            }
 
             // Actualizar en estado local
             set((state) => {
@@ -292,6 +352,9 @@ export const useAuthStore = create<AuthStore>()(
             });
           } catch (error) {
             console.error("Error promoting user to admin:", error);
+            set({
+              error: "Error al promocionar usuario a admin",
+            });
           }
         })();
       },
@@ -299,11 +362,62 @@ export const useAuthStore = create<AuthStore>()(
       demoteFromAdmin: (userId: string) => {
         (async () => {
           try {
-            // Actualizar en Supabase
-            await supabase
+            // Encontrar el usuario para verificar su email
+            const state = get();
+            let userToDemote = state.registeredUsers.find((u) => u.id === userId);
+            if (!userToDemote) {
+              userToDemote = mockUsers.find((u) => u.id === userId);
+            }
+            
+            // Prevenir demotions del owner
+            if (userToDemote?.email === OWNER_EMAIL) {
+              set({
+                error: "No se puede remover los privilegios de administrador del propietario de la plataforma",
+              });
+              return;
+            }
+            
+            // Primero, verificar si el usuario existe en Supabase
+            const { data: existingUser, error: selectError } = await supabase
               .from("users")
-              .update({ role: "freelancer" })
-              .eq("id", userId);
+              .select("*")
+              .eq("id", userId)
+              .maybeSingle();
+            
+            if (selectError) {
+              throw selectError;
+            }
+            
+            // Si no existe, insertarlo primero
+            if (!existingUser) {
+              const { error: insertError } = await supabase
+                .from("users")
+                .insert({
+                  id: userToDemote!.id,
+                  email: userToDemote!.email,
+                  name: userToDemote!.name,
+                  role: "freelancer", // Insertar directamente como freelancer
+                  avatar: userToDemote!.avatar,
+                  tagline: userToDemote!.tagline,
+                  bio: userToDemote!.bio,
+                  location: userToDemote!.location,
+                  skills: userToDemote!.skills || [],
+                });
+              
+              if (insertError) {
+                throw insertError;
+              }
+            } else {
+              // Si existe, actualizar el role
+              const { error: updateError } = await supabase
+                .from("users")
+                .update({ role: "freelancer" })
+                .eq("id", userId);
+              
+              if (updateError) {
+                throw updateError;
+              }
+            }
 
             // Actualizar en estado local
             set((state) => {
@@ -317,13 +431,19 @@ export const useAuthStore = create<AuthStore>()(
             });
           } catch (error) {
             console.error("Error demoting user from admin:", error);
+            set({
+              error: "Error al remover privilegios de administrador",
+            });
           }
         })();
       },
 
       getAllUsers: () => {
         const state = get();
-        return [...mockUsers, ...state.registeredUsers];
+        // Supabase tiene la verdad. Deduplicar por ID: si existe en Supabase, usar eso
+        const supabaseUserIds = new Set(state.registeredUsers.map(u => u.id));
+        const mockUsersNotInSupabase = mockUsers.filter(u => !supabaseUserIds.has(u.id));
+        return [...state.registeredUsers, ...mockUsersNotInSupabase];
       },
 
       loadUsersFromSupabase: async () => {
@@ -356,8 +476,12 @@ export const useAuthStore = create<AuthStore>()(
             registeredUsers: mappedUsers,
           }));
 
-          // Retornar todos los usuarios (mock + Supabase)
-          return [...mockUsers, ...mappedUsers];
+          // Deduplicar: los usuarios de Supabase tienen prioridad por ID
+          const supabaseUserIds = new Set(mappedUsers.map(u => u.id));
+          const mockUsersNotInSupabase = mockUsers.filter(u => !supabaseUserIds.has(u.id));
+          
+          // Retornar usuarios de Supabase + mockUsers que no están en Supabase
+          return [...mappedUsers, ...mockUsersNotInSupabase];
         } catch (error) {
           console.error("Error loading users from Supabase:", error);
           return [...mockUsers];
@@ -379,11 +503,32 @@ export const useAuthStore = create<AuthStore>()(
       deleteUser: (userId: string) => {
         (async () => {
           try {
-            // Eliminar de Supabase
-            await supabase
+            // Encontrar el usuario para verificar si es el owner
+            const state = get();
+            const userToDelete = state.registeredUsers.find((u) => u.id === userId);
+            
+            // Prevenir eliminación del owner
+            if (userToDelete?.email === OWNER_EMAIL) {
+              set({
+                error: "No se puede eliminar al propietario de la plataforma",
+              });
+              return;
+            }
+            
+            console.log(`[Auth] Deleting user ${userId}...`);
+            
+            // Intentar eliminar de Supabase
+            const { error: deleteError } = await supabase
               .from("users")
               .delete()
               .eq("id", userId);
+            
+            if (deleteError) {
+              console.error(`[Auth] Delete error:`, deleteError);
+              throw deleteError;
+            }
+            
+            console.log(`[Auth] User deleted from Supabase`);
 
             // Eliminar del estado local
             set((state) => {
@@ -394,8 +539,13 @@ export const useAuthStore = create<AuthStore>()(
                 isAuthenticated: state.user?.id === userId ? false : state.isAuthenticated,
               };
             });
+            
+            console.log(`[Auth] User deleted successfully`);
           } catch (error) {
             console.error("Error deleting user:", error);
+            set({
+              error: "Error al eliminar el usuario",
+            });
           }
         })();
       },
@@ -404,9 +554,13 @@ export const useAuthStore = create<AuthStore>()(
         const state = get();
         return state.user?.role === "admin";
       },
+
+      isOwner: (email: string) => {
+        return email === OWNER_EMAIL;
+      },
     }),
     {
-      name: "spark-auth", // LocalStorage key
+      name: "masla-auth", // LocalStorage key
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

@@ -16,7 +16,7 @@ El sistema de admin se asigna **automáticamente al primer usuario que inicia se
 1. **Limpia localStorage** (opcional, para empezar de cero):
    - Abre DevTools (F12)
    - Ve a Application → Local Storage
-   - Busca `spark-auth` y elimínalo
+   - Busca `masla-auth` y elimínalo
 
 2. **Accede a la app**
 

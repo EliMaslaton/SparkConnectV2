@@ -55,8 +55,8 @@ export class NotificationManager {
       // Verificar si ya hay permisos
       if (Notification.permission === 'granted') {
         registration.showNotification(title, {
-          icon: '/spark-connect-icon.png',
-          badge: '/spark-connect-badge.png',
+          icon: '/maslaconnect-icon.png',
+          badge: '/maslaconnect-badge.png',
           ...options,
         });
       }
@@ -80,7 +80,7 @@ export class NotificationManager {
 
     try {
       const response = await resend.emails.send({
-        from: 'Spark Connect <noreply@sparkconnect.com>',
+        from: 'MaslaConnect <noreply@maslaconnect.com>',
         to: toEmail,
         subject,
         html: htmlContent,
@@ -120,7 +120,7 @@ export class NotificationManager {
     // 2. Push notification del navegador
     await this.sendPushNotification(`Nuevo mensaje de ${senderName}`, {
       body: messagePreview,
-      icon: '/spark-connect-icon.png',
+      icon: '/maslaconnect-icon.png',
       tag: `message-${conversationId}`,
       data: { conversationId },
     });
@@ -129,7 +129,7 @@ export class NotificationManager {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; color: white; text-align: center;">
-          <h2 style="margin: 0;">Nuevo mensaje en Spark Connect</h2>
+          <h2 style="margin: 0;">Nuevo mensaje en MaslaConnect</h2>
         </div>
         <div style="padding: 20px; background: #f9f9f9; border-radius: 8px; margin-top: 20px;">
           <p>¡Hola ${recipientName}!</p>
@@ -144,7 +144,7 @@ export class NotificationManager {
           </p>
         </div>
         <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
-          <p>© 2026 Spark Connect - Plataforma de servicios freelance</p>
+          <p>© 2026 MaslaConnect - Plataforma de servicios freelance</p>
         </div>
       </div>
     `;

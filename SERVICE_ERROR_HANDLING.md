@@ -2,7 +2,7 @@
 
 ## 🎯 Resumen de Implementaciones
 
-Se han implementado **3 mejoras principales** al sistema de servicios de SparkConnect para manejar mejor cuando un servicio no se encuentra.
+Se han implementado **3 mejoras principales** al sistema de servicios de MaslaConnect para manejar mejor cuando un servicio no se encuentra.
 
 ---
 
