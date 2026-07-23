@@ -1,13 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
     Dialog,
     DialogContent,
     DialogFooter,
@@ -18,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from "@/lib/countries";
 import { CATEGORIES } from "@/lib/mock-data";
 import { PortfolioProject, UserProfile } from "@/types";
 import { Check, Plus, Trash2, Upload, X } from "lucide-react";
@@ -41,8 +33,6 @@ export const EditProfileDialog = ({
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: user.name,
-    phoneCountry: user.phoneCountry || DEFAULT_COUNTRY.code,
-    phoneNumber: user.phoneNumber || "",
     tagline: user.tagline || "",
     bio: user.bio || "",
     location: user.location || "",
@@ -173,15 +163,8 @@ export const EditProfileDialog = ({
 
   const handleSave = async () => {
     setIsSaving(true);
-    const selectedCountry = getCountryByCode(formData.phoneCountry);
-    const sanitizedPhoneNumber = formData.phoneNumber.replace(/\D/g, "");
-    const fullPhoneNumber = sanitizedPhoneNumber ? `${selectedCountry.dialCode}${sanitizedPhoneNumber}` : undefined;
-
     const saved = await onSave({
       name: formData.name,
-      phoneCountry: selectedCountry.code,
-      phoneDialCode: selectedCountry.dialCode,
-      phoneNumber: sanitizedPhoneNumber,
       tagline: formData.tagline,
       bio: formData.bio,
       location: formData.location,
@@ -192,7 +175,6 @@ export const EditProfileDialog = ({
         portfolio: formData.portfolioUrl || undefined,
         linkedin: formData.linkedin || undefined,
         github: formData.github || undefined,
-        phone: fullPhoneNumber,
       },
     });
     setIsSaving(false);
@@ -253,37 +235,6 @@ export const EditProfileDialog = ({
               }
               placeholder="Tu nombre"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Teléfono</Label>
-            <div className="grid grid-cols-[minmax(0,11rem)_1fr] gap-3">
-              <Select
-                value={formData.phoneCountry}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, phoneCountry: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="País" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      {country.flag} {country.name} {country.dialCode}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                value={formData.phoneNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, phoneNumber: e.target.value })
-                }
-                placeholder="Número de teléfono"
-                inputMode="tel"
-              />
-            </div>
           </div>
 
           {/* Tagline */}

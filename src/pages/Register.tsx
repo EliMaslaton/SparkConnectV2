@@ -1,26 +1,10 @@
 import { Navbar } from "@/components/Navbar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/mock-data";
-import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from "@/lib/countries";
 import { useAuthStore } from "@/store/authStore";
-import { useGoogleLogin } from "@react-oauth/google";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Briefcase, Check, GraduationCap, Palette } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,25 +18,17 @@ const Register = () => {
   const [accountType, setAccountType] = useState<AccountType>(null);
   const [step, setStep] = useState(0);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedGoogleRole, setSelectedGoogleRole] = useState<"freelancer" | "client" | null>(null);
-  const [selectedGoogleAccountType, setSelectedGoogleAccountType] = useState<"person" | "company" | "school" | null>(null);
-  const [googlePhoneCountry, setGooglePhoneCountry] = useState(DEFAULT_COUNTRY.code);
-  const [googlePhoneNumber, setGooglePhoneNumber] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     name: "",
-    phoneCountry: DEFAULT_COUNTRY.code,
-    phoneNumber: "",
     tagline: "",
     location: "",
     taxId: "",
     institutionCode: "",
   });
   const navigate = useNavigate();
-  const { register, loginWithGoogle, confirmGoogleRole, showRoleSelection, isLoading, error, isAuthenticated } = useAuthStore();
+  const { register, isLoading, error, isAuthenticated } = useAuthStore();
 
   // Redirigir si el registro fue exitoso
   useEffect(() => {
@@ -71,162 +47,48 @@ const Register = () => {
     );
   };
 
-  const requiredText = (value: string) => value.trim().length > 0;
-
-  const validateStepOne = () => {
-    if (!requiredText(formData.name)) {
-      return accountType === "person"
-        ? "Tu nombre es obligatorio"
-        : accountType === "company"
-          ? "El nombre de la empresa es obligatorio"
-          : "El nombre de la institución es obligatorio";
-    }
-
-    if (accountType === "person" && !requiredText(formData.tagline)) {
-      return "La tagline es obligatoria";
-    }
-
-    if (accountType === "company") {
-      if (!requiredText(formData.tagline)) {
-        return "El rubro de la empresa es obligatorio";
-      }
-
-      if (!requiredText(formData.taxId)) {
-        return "El CUIT es obligatorio";
-      }
-    }
-
-    if (accountType === "school") {
-      if (!requiredText(formData.tagline)) {
-        return "La descripción es obligatoria";
-      }
-
-      if (!requiredText(formData.institutionCode)) {
-        return "El código institucional es obligatorio";
-      }
-    }
-
-    if (!requiredText(formData.location)) {
-      return "La ubicación es obligatoria";
-    }
-
-    if (!requiredText(formData.phoneNumber)) {
-      return "El teléfono es obligatorio";
-    }
-
-    return null;
-  };
-
-  const validateSkillsStep = () => {
-    if (selectedSkills.length === 0) {
-      return "Selecciona al menos una habilidad";
-    }
-
-    return null;
-  };
-
-  const runValidation = () => {
-    const stepError = step === 1 ? validateStepOne() : step === 2 ? validateSkillsStep() : null;
-
-    if (stepError) {
-      setRegistrationError(stepError);
-      return false;
-    }
-
-    setRegistrationError(null);
-    return true;
-  };
-
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (response) => {
-      try {
-        const accessToken = response.access_token;
-        const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        if (!userInfoResponse.ok) {
-          throw new Error("Error al obtener información de Google");
-        }
-
-        const data = await userInfoResponse.json();
-
-        loginWithGoogle({
-          name: data.name,
-          email: data.email,
-          avatar: data.picture,
-        });
-      } catch (error) {
-        console.error("❌ Error en Google Login:", error);
-      }
-    },
-    onError: (error) => {
-      console.error("Google Login Error:", error);
-    },
-    flow: "implicit",
-  });
-
-  const handleRegister = async () => {
+  const handleRegister = () => {
     if (!formData.email || !formData.password || !formData.name) {
       return;
     }
 
-    if (!runValidation()) {
-      return;
-    }
+    const skills = accountType === "person" ? selectedSkills : [];
+    const resolvedAccountType = accountType || (role === "freelancer" ? "person" : "company");
 
-    setIsRegistering(true);
+    const baseUser = {
+      email: formData.email,
+      password: formData.password,
+      name: formData.name,
+      role: role as "freelancer" | "client",
+      accountType: resolvedAccountType,
+      tagline: formData.tagline,
+      location: formData.location,
+      skills,
+      avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${formData.name}`,
+    };
 
-    try {
-      const skills = accountType === "person" ? selectedSkills : [];
-      const resolvedAccountType = accountType || (role === "freelancer" ? "person" : "company");
-      const selectedCountry = getCountryByCode(formData.phoneCountry);
-      const sanitizedPhoneNumber = formData.phoneNumber.replace(/\D/g, "");
-
-      const baseUser = {
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        role: role as "freelancer" | "client",
-        accountType: resolvedAccountType,
-        phoneCountry: selectedCountry.code,
-        phoneDialCode: selectedCountry.dialCode,
-        phoneNumber: sanitizedPhoneNumber,
-        tagline: formData.tagline,
-        location: formData.location,
-        skills,
-        avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${formData.name}`,
-      };
-
-      const saved = await register(
-        resolvedAccountType === "company"
+    register(
+      resolvedAccountType === "company"
+        ? {
+            ...baseUser,
+            companyProfile: {
+              companyName: formData.name,
+              industry: formData.tagline || "General",
+              taxId: formData.taxId || undefined,
+              seekingInterns: true,
+            },
+          }
+        : resolvedAccountType === "school"
           ? {
               ...baseUser,
-              companyProfile: {
-                companyName: formData.name,
-                industry: formData.tagline || "General",
-                taxId: formData.taxId || undefined,
-                seekingInterns: true,
+              schoolProfile: {
+                schoolName: formData.name,
+                institutionCode: formData.institutionCode || undefined,
+                seekingStudents: true,
               },
             }
-          : resolvedAccountType === "school"
-            ? {
-                ...baseUser,
-                schoolProfile: {
-                  schoolName: formData.name,
-                  institutionCode: formData.institutionCode || undefined,
-                  seekingStudents: true,
-                },
-              }
-            : baseUser
-      );
-
-      if (saved) {
-        navigate("/feed");
-      }
-    } finally {
-      setIsRegistering(false);
-    }
+          : baseUser
+    );
   };
 
   const totalSteps = role === "freelancer" ? 3 : 2;
@@ -281,35 +143,35 @@ const Register = () => {
               <div className="grid gap-4 md:grid-cols-3">
                 {[
                   {
-                    id: "talent",
-                    role: "freelancer" as Role,
-                    accountType: "person" as AccountType,
+                    key: "freelancer" as Role,
                     icon: Palette,
                     title: "Soy talento",
                     desc: "Quiero ofrecer mis servicios y conseguir clientes",
                   },
                   {
-                    id: "company",
-                    role: "client" as Role,
-                    accountType: "company" as AccountType,
+                    key: "client" as Role,
                     icon: Briefcase,
                     title: "Soy empresa",
                     desc: "Busco pasantes o freelancers para mis proyectos",
                   },
                   {
-                    id: "school",
-                    role: "client" as Role,
-                    accountType: "school" as AccountType,
+                    key: "client" as Role,
                     icon: GraduationCap,
                     title: "Soy escuela",
                     desc: "Quiero postular una lista de estudiantes",
                   },
                 ].map((item) => (
                   <button
-                    key={item.id}
+                    key={item.key}
                     onClick={() => {
-                      setRole(item.role);
-                      setAccountType(item.accountType);
+                      setRole(item.key);
+                      setAccountType(
+                        item.title === "Soy talento"
+                          ? "person"
+                          : item.title === "Soy empresa"
+                            ? "company"
+                            : "school"
+                      );
                       setStep(0);
                     }}
                     className="rounded-2xl bg-card p-6 shadow-card hover:shadow-card-hover border-2 border-transparent hover:border-primary/30 transition-all text-left space-y-3"
@@ -354,17 +216,13 @@ const Register = () => {
                 </p>
               </div>
 
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-4">
-                {registrationError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{registrationError}</AlertDescription>
-                  </Alert>
-                )}
-                {!registrationError && error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -377,7 +235,6 @@ const Register = () => {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     disabled={isLoading}
-                    required
                   />
                 </div>
                 <div>
@@ -392,7 +249,6 @@ const Register = () => {
                       setFormData({ ...formData, password: e.target.value })
                     }
                     disabled={isLoading}
-                    required
                   />
                 </div>
                 <Button
@@ -412,7 +268,7 @@ const Register = () => {
                     </span>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full rounded-xl h-11" onClick={() => handleGoogleLogin()}>
+                <Button variant="outline" className="w-full rounded-xl h-11">
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                     <path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
@@ -483,7 +339,6 @@ const Register = () => {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     disabled={isLoading}
-                    required
                   />
                 </div>
                 {accountType === "person" && (
@@ -497,7 +352,6 @@ const Register = () => {
                         setFormData({ ...formData, tagline: e.target.value })
                       }
                       disabled={isLoading}
-                      required
                     />
                   </div>
                 )}
@@ -513,7 +367,6 @@ const Register = () => {
                           setFormData({ ...formData, taxId: e.target.value })
                         }
                         disabled={isLoading}
-                        required
                       />
                     </div>
                     <div>
@@ -526,7 +379,6 @@ const Register = () => {
                           setFormData({ ...formData, tagline: e.target.value })
                         }
                         disabled={isLoading}
-                        required
                       />
                     </div>
                   </>
@@ -543,7 +395,6 @@ const Register = () => {
                           setFormData({ ...formData, institutionCode: e.target.value })
                         }
                         disabled={isLoading}
-                        required
                       />
                     </div>
                     <div>
@@ -556,7 +407,6 @@ const Register = () => {
                           setFormData({ ...formData, tagline: e.target.value })
                         }
                         disabled={isLoading}
-                        required
                       />
                     </div>
                   </>
@@ -571,70 +421,16 @@ const Register = () => {
                       setFormData({ ...formData, location: e.target.value })
                     }
                     disabled={isLoading}
-                    required
                   />
                 </div>
-                <div>
-                  <Label>Teléfono</Label>
-                  <div className="mt-1.5 grid grid-cols-[minmax(0,11rem)_1fr] gap-3">
-                    <Select
-                      value={formData.phoneCountry}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, phoneCountry: value })
-                      }
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="País" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COUNTRIES.map((country) => (
-                          <SelectItem key={country.code} value={country.code}>
-                            {country.flag} {country.name} {country.dialCode}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Número de teléfono"
-                      className="rounded-xl"
-                      inputMode="tel"
-                      value={formData.phoneNumber}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phoneNumber: e.target.value })
-                      }
-                      disabled={isLoading}
-                      required
-                    />
-                  </div>
-                </div>
                 <Button
-                  onClick={async () => {
-                    if (accountType === "person") {
-                      const stepOneError = validateStepOne();
-                      if (stepOneError) {
-                        setRegistrationError(stepOneError);
-                        return;
-                      }
-
-                      setStep(2);
-                      return;
-                    }
-
-                    if (!runValidation()) {
-                      return;
-                    }
-
-                    await handleRegister();
-                  }}
-                  disabled={isLoading || isRegistering}
+                  onClick={() =>
+                    accountType === "person" ? setStep(2) : handleRegister()
+                  }
+                  disabled={!formData.name || isLoading}
                   className="w-full gradient-primary text-primary-foreground rounded-xl h-11"
                 >
-                  {accountType === "person"
-                    ? "Continuar"
-                    : isRegistering
-                      ? "Creando cuenta..."
-                      : "Crear cuenta"}
+                  {accountType === "person" ? "Continuar" : "Crear cuenta"}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -658,16 +454,6 @@ const Register = () => {
                   Elige hasta 3 habilidades principales
                 </p>
               </div>
-              {registrationError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{registrationError}</AlertDescription>
-                </Alert>
-              )}
-              {!registrationError && error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
               <div className="flex flex-wrap gap-2 justify-center">
                 {CATEGORIES.map((cat) => {
                   const selected = selectedSkills.includes(cat.label);
@@ -703,15 +489,7 @@ const Register = () => {
                 </div>
               </div>
               <Button
-                onClick={() => {
-                  const skillsError = validateSkillsStep();
-                  if (skillsError) {
-                    setRegistrationError(skillsError);
-                    return;
-                  }
-
-                  void handleRegister();
-                }}
+                onClick={handleRegister}
                 disabled={selectedSkills.length === 0 || isLoading}
                 className="w-full gradient-primary text-primary-foreground rounded-xl h-11"
               >
@@ -721,139 +499,6 @@ const Register = () => {
           )}
         </AnimatePresence>
       </div>
-
-      <Dialog
-        open={showRoleSelection}
-        onOpenChange={(open) => {
-          if (!open && !isLoading) {
-            setSelectedGoogleRole(null);
-            setSelectedGoogleAccountType(null);
-            setGooglePhoneCountry(DEFAULT_COUNTRY.code);
-            setGooglePhoneNumber("");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Completa tu registro</DialogTitle>
-            <DialogDescription>
-              Selecciona cómo quieres usar MaslaConnect y agrega tu teléfono.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-6">
-            <button
-              onClick={() => {
-                setSelectedGoogleRole("freelancer");
-                setSelectedGoogleAccountType("person");
-              }}
-              className={`relative rounded-xl border-2 p-6 text-left transition-all ${
-                selectedGoogleAccountType === "person"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <Briefcase className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">Soy freelancer</h3>
-                  <p className="text-sm text-muted-foreground">Ofrezco mis servicios y busco proyectos interesantes</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setSelectedGoogleRole("client");
-                setSelectedGoogleAccountType("company");
-              }}
-              className={`relative rounded-xl border-2 p-6 text-left transition-all ${
-                selectedGoogleAccountType === "company"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <GraduationCap className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">Soy empresa</h3>
-                  <p className="text-sm text-muted-foreground">Busco pasantes o freelancers para mis proyectos</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setSelectedGoogleRole("client");
-                setSelectedGoogleAccountType("school");
-              }}
-              className={`relative rounded-xl border-2 p-6 text-left transition-all ${
-                selectedGoogleAccountType === "school"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <GraduationCap className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">Soy escuela</h3>
-                  <p className="text-sm text-muted-foreground">Quiero postular una lista de estudiantes</p>
-                </div>
-              </div>
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <Label>Teléfono</Label>
-            <div className="grid grid-cols-[minmax(0,11rem)_1fr] gap-3">
-              <Select value={googlePhoneCountry} onValueChange={setGooglePhoneCountry} disabled={isLoading}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="País" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      {country.flag} {country.name} {country.dialCode}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Número de teléfono"
-                className="rounded-xl"
-                inputMode="tel"
-                value={googlePhoneNumber}
-                onChange={(e) => setGooglePhoneNumber(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-
-          <Button
-            onClick={() => {
-              if (!selectedGoogleRole || !selectedGoogleAccountType) return;
-
-              const selectedCountry = COUNTRIES.find((country) => country.code === googlePhoneCountry) || DEFAULT_COUNTRY;
-
-              confirmGoogleRole(selectedGoogleRole, selectedGoogleAccountType, {
-                phoneCountry: selectedCountry.code,
-                phoneDialCode: selectedCountry.dialCode,
-                phoneNumber: googlePhoneNumber,
-              });
-            }}
-            disabled={!selectedGoogleRole || !selectedGoogleAccountType || !googlePhoneNumber.trim() || isLoading}
-            className="w-full gradient-primary text-primary-foreground rounded-xl h-11"
-          >
-            {isLoading ? "Completando registro..." : "Continuar"}
-          </Button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

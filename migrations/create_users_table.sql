@@ -7,9 +7,6 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT DEFAULT 'freelancer',
   account_type TEXT DEFAULT 'person',
   avatar TEXT,
-  phone_country TEXT,
-  phone_dial_code TEXT,
-  phone_number TEXT,
   tagline TEXT,
   bio TEXT,
   location TEXT,
@@ -31,10 +28,7 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS company_profile JSONB,
   ADD COLUMN IF NOT EXISTS school_profile JSONB,
   ADD COLUMN IF NOT EXISTS portfolio JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS tax_id TEXT,
-  ADD COLUMN IF NOT EXISTS phone_country TEXT,
-  ADD COLUMN IF NOT EXISTS phone_dial_code TEXT,
-  ADD COLUMN IF NOT EXISTS phone_number TEXT;
+  ADD COLUMN IF NOT EXISTS tax_id TEXT;
 
 -- Índices para velocidad
 CREATE INDEX idx_users_email ON users(email);

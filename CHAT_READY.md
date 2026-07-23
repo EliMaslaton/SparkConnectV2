@@ -11,7 +11,7 @@ Todo está listo. Aquí está exactamente qué hacer ahora:
 - ✅ Base de datos SQL creada
 - ✅ Tipos TypeScript definidos
 - ✅ Servicio de Mensajería implementado
-- ✅ Store Zustand configurado
+- ✅ Store Zustand configurad o
 - ✅ Página de Mensajes rediseñada
 - ✅ Componente ContactUserButton creado
 - ✅ Integraciones en perfiles y servicios

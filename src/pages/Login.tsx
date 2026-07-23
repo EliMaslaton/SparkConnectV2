@@ -3,13 +3,6 @@ import { Navbar } from "@/components/Navbar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -18,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { COUNTRIES, DEFAULT_COUNTRY } from "@/lib/countries";
 import { useAuthStore } from "@/store/authStore";
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion } from "framer-motion";
@@ -34,8 +26,6 @@ const Login = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"freelancer" | "client" | null>(null);
   const [selectedAccountType, setSelectedAccountType] = useState<"person" | "company" | "school" | null>(null);
-  const [phoneCountry, setPhoneCountry] = useState(DEFAULT_COUNTRY.code);
-  const [phoneNumber, setPhoneNumber] = useState("");
 
   // Redirigir si el login fue exitoso
   useEffect(() => {
@@ -207,8 +197,6 @@ const Login = () => {
         if (!open && !isLoading) {
           setSelectedRole(null);
           setSelectedAccountType(null);
-          setPhoneCountry(DEFAULT_COUNTRY.code);
-          setPhoneNumber("");
         }
       }}>
         <DialogContent className="sm:max-w-md">
@@ -295,49 +283,13 @@ const Login = () => {
             </button>
           </div>
 
-          <div className="space-y-3">
-            <Label>Teléfono</Label>
-            <div className="grid grid-cols-[minmax(0,11rem)_1fr] gap-3">
-              <Select
-                value={phoneCountry}
-                onValueChange={setPhoneCountry}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="País" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      {country.flag} {country.name} {country.dialCode}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Número de teléfono"
-                className="rounded-xl"
-                inputMode="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-
           <Button
             onClick={() => {
               if (selectedRole) {
-                const selectedCountry = COUNTRIES.find((country) => country.code === phoneCountry) || DEFAULT_COUNTRY;
-
-                confirmGoogleRole(selectedRole, selectedAccountType || undefined, {
-                  phoneCountry: selectedCountry.code,
-                  phoneDialCode: selectedCountry.dialCode,
-                  phoneNumber,
-                });
+                confirmGoogleRole(selectedRole, selectedAccountType || undefined);
               }
             }}
-            disabled={!selectedRole || !selectedAccountType || !phoneNumber.trim() || isLoading}
+            disabled={!selectedRole || !selectedAccountType || isLoading}
             className="w-full gradient-primary text-primary-foreground rounded-xl h-11"
           >
             {isLoading ? "Completando registro..." : "Continuar"}

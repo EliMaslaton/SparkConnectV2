@@ -28,9 +28,6 @@ export interface UserProfile {
   role: UserRole;
   accountType?: "person" | "company" | "school";
   avatar?: string;
-  phoneCountry?: string;
-  phoneDialCode?: string;
-  phoneNumber?: string;
   tagline?: string; // Short profession/headline
   bio?: string;
   location?: string;
@@ -39,7 +36,6 @@ export interface UserProfile {
     portfolio?: string;
     linkedin?: string;
     github?: string;
-    phone?: string;
   };
   /** Perfil de pasante (freelancer buscando pasantía) */
   internshipProfile?: InternshipCandidateProfile;

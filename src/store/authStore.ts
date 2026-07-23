@@ -26,19 +26,6 @@ const normalizeUserDates = (user: UserProfile): UserProfile => ({
   updatedAt: toDate(user.updatedAt),
 });
 
-const normalizePhoneNumber = (phoneNumber?: string) =>
-  phoneNumber?.replace(/\D/g, "") || undefined;
-
-const buildFullPhoneNumber = (phoneDialCode?: string, phoneNumber?: string) => {
-  const normalizedNumber = normalizePhoneNumber(phoneNumber);
-
-  if (!phoneDialCode || !normalizedNumber) {
-    return undefined;
-  }
-
-  return `${phoneDialCode}${normalizedNumber}`;
-};
-
 const mapUserFromSupabase = (user: any): UserProfile => ({
   id: user.id,
   email: user.email,
@@ -47,25 +34,11 @@ const mapUserFromSupabase = (user: any): UserProfile => ({
   role: user.role as UserProfile["role"],
   accountType: user.account_type || "person",
   avatar: user.avatar,
-  phoneCountry: user.phone_country || undefined,
-  phoneDialCode: user.phone_dial_code || undefined,
-  phoneNumber: user.phone_number || undefined,
   tagline: user.tagline,
   bio: user.bio,
   location: user.location,
   skills: user.skills || [],
-  socialLinks: user.social_links
-    ? {
-        ...user.social_links,
-        phone:
-          user.social_links.phone ||
-          buildFullPhoneNumber(user.phone_dial_code, user.phone_number),
-      }
-    : buildFullPhoneNumber(user.phone_dial_code, user.phone_number)
-      ? {
-          phone: buildFullPhoneNumber(user.phone_dial_code, user.phone_number),
-        }
-      : undefined,
+  socialLinks: user.social_links || undefined,
   internshipProfile: user.internship_profile || undefined,
   companyProfile: user.company_profile || undefined,
   schoolProfile: user.school_profile || undefined,
@@ -85,23 +58,11 @@ const mapUserToSupabase = (user: UserProfile) => {
     role: normalizedUser.role,
     account_type: normalizedUser.accountType || "person",
     avatar: normalizedUser.avatar,
-    phone_country: normalizedUser.phoneCountry || null,
-    phone_dial_code: normalizedUser.phoneDialCode || null,
-    phone_number: normalizePhoneNumber(normalizedUser.phoneNumber) || null,
     tagline: normalizedUser.tagline,
     bio: normalizedUser.bio,
     location: normalizedUser.location,
     skills: normalizedUser.skills || [],
-    social_links: {
-      ...(normalizedUser.socialLinks || {}),
-      phone:
-        normalizedUser.socialLinks?.phone ||
-        buildFullPhoneNumber(
-          normalizedUser.phoneDialCode,
-          normalizedUser.phoneNumber
-        ) ||
-        undefined,
-    },
+    social_links: normalizedUser.socialLinks || {},
     internship_profile: normalizedUser.internshipProfile || null,
     company_profile: normalizedUser.companyProfile || null,
     school_profile: normalizedUser.schoolProfile || null,
@@ -110,89 +71,6 @@ const mapUserToSupabase = (user: UserProfile) => {
     created_at: normalizedUser.createdAt.toISOString(),
     updated_at: normalizedUser.updatedAt.toISOString(),
   };
-};
-
-const mapLegacyUserToSupabase = (user: UserProfile) => {
-  const normalizedUser = normalizeUserDates(user);
-
-  return {
-    id: normalizedUser.id,
-    email: normalizedUser.email,
-    password: normalizedUser.password,
-    name: normalizedUser.name,
-    role: normalizedUser.role,
-    avatar: normalizedUser.avatar,
-    tagline: normalizedUser.tagline,
-    bio: normalizedUser.bio,
-    location: normalizedUser.location,
-    skills: normalizedUser.skills || [],
-    created_at: normalizedUser.createdAt.toISOString(),
-    updated_at: normalizedUser.updatedAt.toISOString(),
-  };
-};
-
-const isMissingSchemaColumnError = (error: any) =>
-  error?.code === "PGRST204" ||
-  (typeof error?.message === "string" &&
-    error.message.includes("Could not find the"));
-
-const formatSupabaseError = (error: any) => {
-  if (!error) {
-    return "Unknown Supabase error";
-  }
-
-  const parts = [error.code, error.message, error.details, error.hint].filter(
-    (part): part is string => typeof part === "string" && part.trim().length > 0
-  );
-
-  return parts.length > 0 ? parts.join(" | ") : JSON.stringify(error);
-};
-
-const saveUserToSupabase = async (
-  user: UserProfile,
-  mode: "insert" | "upsert" = "insert"
-) => {
-  const { data: existingUser, error: lookupError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", user.email)
-    .maybeSingle();
-
-  if (lookupError && lookupError.code !== "PGRST116") {
-    console.warn("[Auth] User lookup failed before Supabase write:", formatSupabaseError(lookupError));
-  }
-
-  const resolvedUser = existingUser?.id ? { ...user, id: existingUser.id } : user;
-  const fullPayload = mapUserToSupabase(resolvedUser);
-  const legacyPayload = mapLegacyUserToSupabase(resolvedUser);
-
-  const execute = async (payload: Record<string, unknown>) =>
-    mode === "insert"
-      ? supabase.from("users").upsert(payload, { onConflict: "email", ignoreDuplicates: true })
-      : supabase.from("users").upsert(payload, { onConflict: "id" });
-
-  const { error: firstError } = await execute(fullPayload);
-
-  if (firstError) {
-    console.warn(
-      "[Auth] Falling back to legacy users schema payload after Supabase write failure",
-      formatSupabaseError(firstError)
-    );
-
-    const { error: fallbackError } = await execute(legacyPayload);
-
-    if (fallbackError) {
-      console.error(
-        "[Auth] Supabase write failed after fallback:",
-        `primary=${formatSupabaseError(firstError)}; fallback=${formatSupabaseError(fallbackError)}`
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  return true;
 };
 
 /**
@@ -227,15 +105,10 @@ interface AuthStore extends AuthState {
   /** Confirmar rol seleccionado para nuevo usuario de Google */
   confirmGoogleRole: (
     role: "freelancer" | "client",
-    accountType?: "person" | "company" | "school",
-    contactData?: {
-      phoneCountry?: string;
-      phoneDialCode?: string;
-      phoneNumber?: string;
-    }
+    accountType?: "person" | "company" | "school"
   ) => Promise<void>;
   /** Create new user account */
-  register: (userData: Omit<UserProfile, "id" | "createdAt" | "updatedAt">) => Promise<boolean>;
+  register: (userData: Omit<UserProfile, "id" | "createdAt" | "updatedAt">) => void;
   /** Clear authentication and current user */
   logout: () => void;
   /** Update current user profile information */
@@ -354,7 +227,9 @@ export const useAuthStore = create<AuthStore>()(
               };
               
               // Actualizar en Supabase
-              await saveUserToSupabase(user, "upsert");
+              await supabase
+                .from("users")
+                .upsert(mapUserToSupabase(user), { onConflict: "id" });
               
               set((state) => {
                 const updatedRegisteredUsers = state.registeredUsers.map((u) =>
@@ -384,9 +259,6 @@ export const useAuthStore = create<AuthStore>()(
                   role: "admin" as const,
                   password: "",
                   avatar: googleData.avatar,
-                  phoneCountry: undefined,
-                  phoneDialCode: undefined,
-                  phoneNumber: undefined,
                   tagline: "Administrador",
                   bio: "Gestor principal de la plataforma",
                   location: "Por definir",
@@ -396,7 +268,9 @@ export const useAuthStore = create<AuthStore>()(
                 };
                 
                 // Guardar en Supabase
-                await saveUserToSupabase(user, "insert");
+                await supabase
+                  .from("users")
+                  .insert(mapUserToSupabase(user));
                 
                 set((state) => ({
                   registeredUsers: [...state.registeredUsers, user as UserProfile],
@@ -426,12 +300,7 @@ export const useAuthStore = create<AuthStore>()(
       confirmGoogleRole: async (
         role: "freelancer" | "client",
         accountType: "person" | "company" | "school" =
-          role === "freelancer" ? "person" : "company",
-        contactData?: {
-          phoneCountry?: string;
-          phoneDialCode?: string;
-          phoneNumber?: string;
-        }
+          role === "freelancer" ? "person" : "company"
       ) => {
         set({ isLoading: true, error: null });
         
@@ -468,26 +337,14 @@ export const useAuthStore = create<AuthStore>()(
                     seekingStudents: true,
                   }
                 : undefined,
-            phoneCountry: contactData?.phoneCountry,
-            phoneDialCode: contactData?.phoneDialCode,
-            phoneNumber: normalizePhoneNumber(contactData?.phoneNumber),
-            socialLinks: buildFullPhoneNumber(
-              contactData?.phoneDialCode,
-              contactData?.phoneNumber
-            )
-              ? {
-                  phone: buildFullPhoneNumber(
-                    contactData?.phoneDialCode,
-                    contactData?.phoneNumber
-                  ),
-                }
-              : undefined,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
 
           // Guardar en Supabase
-          await saveUserToSupabase(user, "insert");
+          await supabase
+            .from("users")
+            .insert(mapUserToSupabase(user));
 
           set((state) => ({
             user,
@@ -498,69 +355,75 @@ export const useAuthStore = create<AuthStore>()(
             registeredUsers: [...state.registeredUsers, user],
           }));
         } catch (error) {
-          console.error("❌ Error al confirmar rol de Google:", formatSupabaseError(error));
+          console.error("❌ Error al confirmar rol de Google:", error);
           set({
             isLoading: false,
-            error: error instanceof Error ? error.message : "Error al completar el registro",
+            error: "Error al completar el registro",
           });
         }
       },
 
-      register: async (userData) => {
+      register: (userData) => {
         set({ isLoading: true, error: null });
+        
+        (async () => {
+          try {
+            // Verificar que el email no existe en Supabase
+            const { data: existingUser, error: checkError } = await supabase
+              .from("users")
+              .select("*")
+              .eq("email", userData.email)
+              .maybeSingle();
 
-        try {
-          // Verificar que el email no existe en Supabase
-          const { data: existingUser, error: checkError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("email", userData.email)
-            .maybeSingle();
+            if (checkError && checkError.code !== 'PGRST116') {
+              throw checkError;
+            }
 
-          if (checkError && checkError.code !== "PGRST116") {
-            throw checkError;
-          }
+            if (existingUser) {
+              set({
+                isLoading: false,
+                error: "El email ya está registrado",
+              });
+              return;
+            }
 
-          if (existingUser) {
+            // Crear nuevo usuario
+            const newUser: UserProfile = {
+              ...userData,
+              accountType: userData.accountType || "person",
+              id: `user_${Date.now()}`,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            // Guardar en Supabase
+            console.log("[Auth] Saving new user to Supabase:", newUser.email);
+            const { error: insertError } = await supabase
+              .from("users")
+              .insert(mapUserToSupabase(newUser));
+
+            if (insertError) {
+              console.error("[Auth] Insert error:", insertError);
+              throw insertError;
+            }
+            
+            console.log("[Auth] User saved successfully:", newUser.email);
+
+            set((state) => ({
+              registeredUsers: [...state.registeredUsers, newUser],
+              user: newUser,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            }));
+          } catch (error) {
+            console.error("[Auth] Register error:", error);
             set({
               isLoading: false,
-              error: "El email ya está registrado",
+              error: error instanceof Error ? error.message : "Error al registrar el usuario",
             });
-            return false;
           }
-
-          // Crear nuevo usuario
-          const newUser: UserProfile = {
-            ...userData,
-            accountType: userData.accountType || "person",
-            id: `user_${Date.now()}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-
-          // Guardar en Supabase
-          console.log("[Auth] Saving new user to Supabase:", newUser.email);
-          await saveUserToSupabase(newUser, "insert");
-
-          console.log("[Auth] User saved successfully:", newUser.email);
-
-          set((state) => ({
-            registeredUsers: [...state.registeredUsers, newUser],
-            user: newUser,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          }));
-
-          return true;
-        } catch (error) {
-          console.error("[Auth] Register error:", formatSupabaseError(error));
-          set({
-            isLoading: false,
-            error: error instanceof Error ? error.message : formatSupabaseError(error),
-          });
-          return false;
-        }
+        })();
       },
 
       logout: () => {
@@ -592,11 +455,17 @@ export const useAuthStore = create<AuthStore>()(
         }));
 
         try {
-          await saveUserToSupabase(updatedUser, "upsert");
+          const { error } = await supabase
+            .from("users")
+            .upsert(mapUserToSupabase(updatedUser), { onConflict: "id" });
+
+          if (error) {
+            throw error;
+          }
 
           return true;
         } catch (error) {
-          console.error("[Auth] Update profile error:", formatSupabaseError(error));
+          console.error("[Auth] Update profile error:", error);
           set({ error: "Error al guardar el perfil en la base de datos" });
           return false;
         }
